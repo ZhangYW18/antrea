@@ -177,8 +177,14 @@ func getTraceflowMessage(o *opsv1alpha1.Observation) string {
 	if o.Component == opsv1alpha1.NetworkPolicy && len(o.NetworkPolicy) > 0 {
 		str += "\nNetpol: " + o.NetworkPolicy
 	}
+	if len(o.Pod) > 0 {
+		str += "\nTo: " + o.Pod
+	}
+	if o.Action != opsv1alpha1.Dropped && len(o.TranslatedDstIP) > 0 {
+		str += "\nIP: " + o.TranslatedDstIP
+	}
 	if o.Action != opsv1alpha1.Dropped && len(o.TunnelDstIP) > 0 {
-		str += "\nTo: " + o.TunnelDstIP
+		str += "\nDestination: " + o.TunnelDstIP
 	}
 	return str
 }
@@ -232,7 +238,7 @@ func getTraceflowStatusMessage(tf *opsv1alpha1.Traceflow) string {
 	case opsv1alpha1.Pending:
 		return getWrappedStr(fmt.Sprintf("Traceflow %s is pending...", tf.Name))
 	default:
-		return getWrappedStr("Unknown Traceflow status. Please check Antrea is running with Traceflow feature gate enabled.")
+		return getWrappedStr("Unknown Traceflow status. Please check whether Antrea is running.")
 	}
 }
 
