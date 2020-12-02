@@ -4,7 +4,7 @@ WORKDIR /antrea
 
 COPY go.mod /antrea/go.mod
 
-RUN go mod download
+RUN GOPROXY=https://goproxy.io,direct go mod download
 
 COPY . /antrea
 
