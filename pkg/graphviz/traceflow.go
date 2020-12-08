@@ -181,10 +181,10 @@ func getTraceflowMessage(o *opsv1alpha1.Observation) string {
 		str += "\nTo: " + o.Pod
 	}
 	if o.Action != opsv1alpha1.Dropped && len(o.TranslatedDstIP) > 0 {
-		str += "\nIP: " + o.TranslatedDstIP
+		str += "\nTranslated Destination IP: " + o.TranslatedDstIP
 	}
 	if o.Action != opsv1alpha1.Dropped && len(o.TunnelDstIP) > 0 {
-		str += "\nDestination: " + o.TunnelDstIP
+		str += "\nTunnel Destination IP : " + o.TunnelDstIP
 	}
 	return str
 }
