@@ -15,6 +15,7 @@
 # limitations under the License.
 
 set -eo pipefail
+set -x
 
 function echoerr {
     >&2 echo "$@"
