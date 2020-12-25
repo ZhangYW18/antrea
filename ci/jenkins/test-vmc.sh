@@ -486,6 +486,12 @@ function run_conformance {
     kubectl rollout status --timeout=5m deployment/coredns -n kube-system
     kubectl rollout status --timeout=5m deployment.apps/antrea-controller -n kube-system
     kubectl rollout status --timeout=5m daemonset/antrea-agent -n kube-system
+    agents=($(kubectl get pod -A --no-headers=true | grep antrea-agent | awk '{print $2}' | xargs))
+    for agent in ${agents[@]}; do
+      kubectl exec -i $agent -n kube-system -c antrea-agent -- /bin/bash -c "antctl version"
+    done
+    kubectl exec -i $(kubectl get pod -A --no-headers=true | grep antrea-controller | awk '{print $2}') -n kube-system -- /bin/bash -c "antctl version"
+    return 0
 
     master_ip="$(kubectl get nodes -o wide --no-headers=true | awk '$3 == "master" {print $6}')"
     echo "=== Move kubeconfig to master ==="
