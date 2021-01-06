@@ -249,23 +249,23 @@ function copy_image {
   image=$2
   IP=$3
   version=$4
-  NEED_LATEST_TAG=$5
+  need_latest_tag=$5
   scp -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key $filename capv@${IP}:/home/capv
   if [ $TEST_OS == 'centos-7' ]; then
       ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo chmod 777 /run/containerd/containerd.sock"
-      if [[ $NEED_LATEST_TAG == 'true' ]]; then
+      if [[ $need_latest_tag == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo crictl images | grep $image | awk '{print \$3}' | uniq | xargs -r crictl rmi"
       fi
       ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "ctr -n=k8s.io images import /home/capv/$filename"
-      if [[ $NEED_LATEST_TAG == 'true' ]]; then
+      if [[ $need_latest_tag == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "ctr -n=k8s.io images tag $image:$version $image:latest"
       fi
   else
-      if [[ $NEED_LATEST_TAG == 'true' ]]; then
+      if [[ $need_latest_tag == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo crictl images | grep $image | awk '{print \$3}' | uniq | xargs -r crictl rmi"
       fi
       ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo ctr -n=k8s.io images import /home/capv/$filename"
-      if [[ $NEED_LATEST_TAG == 'true' ]]; then
+      if [[ $need_latest_tag == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo ctr -n=k8s.io images tag $image:$version $image:latest"
       fi
   fi
@@ -333,7 +333,7 @@ function deliver_antrea {
     if [[ "$COVERAGE" == true ]]; then
         docker save -o antrea-ubuntu-coverage.tar antrea/antrea-ubuntu-coverage:${DOCKER_IMG_VERSION}
     else
-        docker save -o antrea-ubuntu.tar antrea/antrea-ubuntu:${DOCKER_IMG_VERSION}
+        docker save -o antrea-ubuntu.tar projects.registry.vmware.com/antrea/antrea-ubuntu:${DOCKER_IMG_VERSION}
     fi
     docker save -o flow-aggregator.tar projects.registry.vmware.com/antrea/flow-aggregator:${DOCKER_IMG_VERSION}
 
@@ -348,7 +348,7 @@ function deliver_antrea {
         if [[ "$COVERAGE" == true ]]; then
             copy_image antrea-ubuntu-coverage.tar docker.io/antrea/antrea-ubuntu-coverage ${IPs[$i]} ${DOCKER_IMG_VERSION} true
         else
-            copy_image antrea-ubuntu.tar docker.io/antrea/antrea-ubuntu ${IPs[$i]} ${DOCKER_IMG_VERSION} true
+            copy_image antrea-ubuntu.tar projects.registry.vmware.com/antrea/antrea-ubuntu ${IPs[$i]} ${DOCKER_IMG_VERSION} true
         fi
         copy_image flow-aggregator.tar projects.registry.vmware.com/antrea/flow-aggregator ${IPs[$i]} ${DOCKER_IMG_VERSION} true
     done
