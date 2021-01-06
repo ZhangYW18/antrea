@@ -250,25 +250,19 @@ function copy_image {
   image=$2
   IP=$3
   version=$4
-  need_latest_tag=$5
+  need_cleanup=$5
   scp -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key $filename capv@${IP}:/home/capv
   if [ $TEST_OS == 'centos-7' ]; then
       ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo chmod 777 /run/containerd/containerd.sock"
-      if [[ $need_latest_tag == 'true' ]]; then
+      if [[ $need_cleanup == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo crictl images | grep $image | awk '{print \$3}' | uniq | xargs -r crictl rmi"
       fi
-      ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "ctr -n=k8s.io images import /home/capv/$filename"
-      if [[ $need_latest_tag == 'true' ]]; then
-          ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "ctr -n=k8s.io images tag $image:$version $image:latest"
-      fi
+      ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "ctr -n=k8s.io images import /home/capv/$filename ; ctr -n=k8s.io images tag $image:$version $image:latest"
   else
-      if [[ $need_latest_tag == 'true' ]]; then
+      if [[ $need_cleanup == 'true' ]]; then
           ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo crictl images | grep $image | awk '{print \$3}' | uniq | xargs -r crictl rmi"
       fi
-      ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo ctr -n=k8s.io images import /home/capv/$filename"
-      if [[ $need_latest_tag == 'true' ]]; then
-          ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo ctr -n=k8s.io images tag $image:$version $image:latest"
-      fi
+      ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo ctr -n=k8s.io images import /home/capv/$filename ; sudo ctr -n=k8s.io images tag $image:$version $image:latest"
   fi
   ssh -q -o StrictHostKeyChecking=no -i ${GIT_CHECKOUT_DIR}/jenkins/key/antrea-ci-key -n capv@${IP} "sudo crictl images | grep '<none>' | awk '{print \$3}' | xargs -r crictl rmi"
 }
@@ -316,9 +310,11 @@ function deliver_antrea {
         make manifest-coverage -C $GIT_CHECKOUT_DIR
         antrea_yml="antrea-coverage.yml"
     fi
+
+    DOCKER_IMG_VERSION=$CLUSTER
     if [[ -n $OLD_ANTREA_VERSION ]]; then
-        # Let antrea controller use old Antrea image
-        sed -i "0,/antrea-ubuntu:latest/{s/antrea-ubuntu:latest/antrea-ubuntu:$OLD_ANTREA_VERSION/}" ${GIT_CHECKOUT_DIR}/build/yamls/$antrea_yml
+        # Let antrea controller use new Antrea image
+        sed -i "0,/antrea-ubuntu:latest/{s/antrea-ubuntu:latest/antrea-ubuntu:$DOCKER_IMG_VERSION/}" ${GIT_CHECKOUT_DIR}/build/yamls/$antrea_yml
     fi
 
     sed -i "s|#serviceCIDR: 10.96.0.0/12|serviceCIDR: 100.64.0.0/13|g" $GIT_CHECKOUT_DIR/build/yamls/$antrea_yml
@@ -329,7 +325,6 @@ function deliver_antrea {
 
     echo "====== Delivering Antrea to all the Nodes ======"
     export KUBECONFIG=${GIT_CHECKOUT_DIR}/jenkins/out/kubeconfig
-    DOCKER_IMG_VERSION=$CLUSTER
 
     if [[ "$COVERAGE" == true ]]; then
         docker save -o antrea-ubuntu-coverage.tar antrea/antrea-ubuntu-coverage:${DOCKER_IMG_VERSION}
@@ -376,9 +371,6 @@ function deliver_antrea {
         # We want old-versioned Antrea agents to be more than half in cluster
         if [[ $i -ge $((${node_num}/2)) ]]; then
             # Tag old image to latest if we want Antrea agent to be old-versioned
-            copy_image antrea-ubuntu-old.tar projects.registry.vmware.com/antrea/antrea-ubuntu ${IPs[$i]} $OLD_ANTREA_VERSION true
-        else
-            # Still send old image in case Antrea controller is allocated to that node
             copy_image antrea-ubuntu-old.tar projects.registry.vmware.com/antrea/antrea-ubuntu ${IPs[$i]} $OLD_ANTREA_VERSION false
         fi
     done
